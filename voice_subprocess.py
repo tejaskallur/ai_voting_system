@@ -84,9 +84,10 @@ def voice_voting_process(session_id):
         # Provide feedback that we heard something
         speak_subprocess_safe(f"I heard you say: {voter}")
         
-        # Validate voter ID format
-        voter_match = re.search(r'\b(TEST\d+)\b', voter.upper())
-        if not voter_match:
+        # Validate voter ID format - only accept 'first one' variations
+        first_one_match = re.search(r'\b(first one|firstone|first van|first won|firs tone|asked one|ask one)\b', voter.lower())
+        
+        if not first_one_match:
             # Clear audio feedback for blind users - make it consistent with display
             error_message = f"Invalid Voter ID: I heard '{voter}'. Please provide a valid voter ID."
             
@@ -112,21 +113,22 @@ def voice_voting_process(session_id):
             send_final_result(session_id, False, error_message)
             return
         
-        valid_voter_id = voter_match.group(1)
+        # Set valid voter ID for 'first one'
+        valid_voter_id = "first one"  # Store as lowercase as requested
         send_status(session_id, 1, 'success', f'Voter ID confirmed: {valid_voter_id}')
-        speak(f"Voter ID {valid_voter_id} confirmed")
+        speak_subprocess_safe(f"Voter ID {valid_voter_id} confirmed")
         
         # Step 2: Get Candidate Choice
         send_status(session_id, 2, 'listening', '🎤 LISTENING: Say your candidate choice (1, 2, or 3)')
         
         candidates = get_candidates()
-        speak_and_wait("Excellent! Now I will read the list of candidates.", wait_time=1.5)
-        speak_and_wait("Listen carefully to all candidates before making your choice.", wait_time=1.5)
+        speak_subprocess_safe("Excellent! Now I will read the list of candidates.")
+        speak_subprocess_safe("Listen carefully to all candidates before making your choice.")
         for cid, name in candidates:
-            speak_and_wait(f"Candidate number {cid} is {name}", wait_time=2.0)
-        speak_and_wait("Please say just the number of your chosen candidate.", wait_time=1.5)
-        speak_and_wait("For example, say 1, or 2, or 3.", wait_time=1.5)
-        speak("I am listening for your choice...")
+            speak_subprocess_safe(f"Candidate number {cid} is {name}")
+        speak_subprocess_safe("Please say just the number of your chosen candidate.")
+        speak_subprocess_safe("For example, say 1, or 2, or 3.")
+        speak_subprocess_safe("I am listening for your choice...")
         
         choice = listen(
             prefer_vosk=True,
@@ -138,14 +140,14 @@ def voice_voting_process(session_id):
         )
         
         if not choice or not choice.strip():
-            speak("I didn't hear your candidate choice clearly.")
-            speak("Please say just the number: 1, 2, or 3.")
-            speak("Let me try again.")
+            speak_subprocess_safe("I didn't hear your candidate choice clearly.")
+            speak_subprocess_safe("Please say just the number: 1, 2, or 3.")
+            speak_subprocess_safe("Let me try again.")
             send_final_result(session_id, False, "No candidate choice heard - please say 1, 2, or 3 clearly.")
             return
         
         # Provide feedback that we heard something
-        speak(f"I heard you say: {choice}")
+        speak_subprocess_safe(f"I heard you say: {choice}")
         
         # Parse candidate choice
         choice_match = re.search(r"(\d+)", choice)
@@ -156,9 +158,9 @@ def voice_voting_process(session_id):
             error_message = f"Invalid candidate choice: I heard '{choice}'. Please say just the number: 1, 2, or 3."
             
             # Speak the same message that will be displayed
-            speak(error_message)
-            speak("Please say exactly: 1, 2, or 3.")
-            speak("Let me restart the candidate selection for you.")
+            speak_subprocess_safe(error_message)
+            speak_subprocess_safe("Please say exactly: 1, 2, or 3.")
+            speak_subprocess_safe("Let me restart the candidate selection for you.")
             send_final_result(session_id, False, error_message)
             return
         
@@ -174,16 +176,16 @@ def voice_voting_process(session_id):
             return
         
         send_status(session_id, 2, 'success', f'Candidate selected: {candidate_name}')
-        speak(f"You selected {candidate_name}")
+        speak_subprocess_safe(f"You selected {candidate_name}")
         
         # Step 3: Confirmation
         send_status(session_id, 3, 'listening', '🎤 LISTENING: Say "confirm" to cast your vote or "cancel" to abort')
         
-        speak_and_wait(f"Perfect! You have chosen {candidate_name}.", wait_time=2.0)
-        speak_and_wait("Now I need your final confirmation to cast your vote.", wait_time=1.5)
-        speak_and_wait("Say 'confirm' to cast your vote for this candidate.", wait_time=1.5)
-        speak_and_wait("Or say 'cancel' to abort and not vote.", wait_time=1.5)
-        speak("I am listening for your confirmation...")
+        speak_subprocess_safe(f"Perfect! You have chosen {candidate_name}.")
+        speak_subprocess_safe("Now I need your final confirmation to cast your vote.")
+        speak_subprocess_safe("Say 'confirm' to cast your vote for this candidate.")
+        speak_subprocess_safe("Or say 'cancel' to abort and not vote.")
+        speak_subprocess_safe("I am listening for your confirmation...")
         
         confirmation = listen(
             prefer_vosk=True,
@@ -195,30 +197,30 @@ def voice_voting_process(session_id):
         )
         
         if not confirmation:
-            speak("I didn't hear your confirmation clearly.")
-            speak("Please say 'confirm' to cast your vote, or 'cancel' to abort.")
-            speak("Let me try again.")
+            speak_subprocess_safe("I didn't hear your confirmation clearly.")
+            speak_subprocess_safe("Please say 'confirm' to cast your vote, or 'cancel' to abort.")
+            speak_subprocess_safe("Let me try again.")
             send_final_result(session_id, False, "No confirmation heard. Say 'confirm' to vote or 'cancel' to abort.")
             return
         
         # Provide feedback that we heard something
-        speak(f"I heard you say: {confirmation}")
+        speak_subprocess_safe(f"I heard you say: {confirmation}")
         
         if "confirm" in confirmation.lower():
             # Record the vote
             record_vote(valid_voter_id, candidate_id)
-            speak("Excellent! Your vote has been successfully recorded.")
-            speak(f"You voted for {candidate_name}.")
-            speak("Thank you for voting!")
+            speak_subprocess_safe("Excellent! Your vote has been successfully recorded.")
+            speak_subprocess_safe(f"You voted for {candidate_name}.")
+            speak_subprocess_safe("Thank you for voting!")
             send_final_result(session_id, True, f"Vote successfully recorded for {candidate_name}!", valid_voter_id, candidate_name)
         else:
             # Clear audio feedback for blind users - make it consistent with display
             error_message = f"Vote cancelled: I heard '{confirmation}' but need 'confirm' to vote."
             
             # Speak the same message that will be displayed
-            speak(error_message)
-            speak("Your vote has been cancelled for security.")
-            speak("Please start again if you want to vote.")
+            speak_subprocess_safe(error_message)
+            speak_subprocess_safe("Your vote has been cancelled for security.")
+            speak_subprocess_safe("Please start again if you want to vote.")
             send_final_result(session_id, False, error_message)
             
     except Exception as e:
